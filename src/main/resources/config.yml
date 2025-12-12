@@ -1,0 +1,32 @@
+# ChatForward 配置文件
+# 自动生成于 2025-12-12
+
+websocket:
+  # WebSocket服务器地址
+  url: "ws://localhost:8080/chat"
+
+  # 重连间隔(毫秒)
+  reconnectInterval: 5000
+
+  # 最大重连尝试次数
+  maxReconnectAttempts: 10
+
+chat:
+  # 主前缀
+  mainPrefix: "§8[§a群组§8]§r"
+
+  # MCDR命令前缀列表
+  mcdrCommandPrefix:
+    - "!!"
+    - "##"
+
+  # 服务器前缀映射
+  serverPrefixMapping:
+    lobby: "§6大厅"
+    survival: "§2生存"
+    creative: "§b创造"
+    minigame: "§e小游戏"
+
+storage:
+  # 玩家个性设置文件
+  playerPersonalityFile: "player_personality.json"

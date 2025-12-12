@@ -24,6 +24,15 @@ dependencies {
     compileOnly("com.velocitypowered:velocity-api:3.4.0-SNAPSHOT")
     kapt("com.velocitypowered:velocity-api:3.4.0-SNAPSHOT")
     implementation("org.jetbrains.kotlin:kotlin-stdlib-jdk8")
+
+    // 新增依赖
+    implementation("com.alibaba.fastjson2:fastjson2:2.0.51")          // JSON处理
+    implementation("org.yaml:snakeyaml:2.2")                         // YAML解析
+    implementation("org.java-websocket:Java-WebSocket:1.5.6")        // WebSocket客户端
+
+    // 测试依赖
+    testImplementation("org.junit.jupiter:junit-jupiter:5.10.3")
+    testImplementation("org.mockito:mockito-core:5.11.0")
 }
 
 tasks {
