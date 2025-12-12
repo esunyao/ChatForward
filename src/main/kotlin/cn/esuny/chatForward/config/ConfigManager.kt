@@ -4,12 +4,17 @@ import com.velocitypowered.api.proxy.ProxyServer
 import org.slf4j.Logger
 import org.yaml.snakeyaml.Yaml
 import org.yaml.snakeyaml.constructor.Constructor
+import org.yaml.snakeyaml.representer.Representer
+import org.yaml.snakeyaml.DumperOptions
 import java.io.File
 import java.io.FileInputStream
+import java.io.FileOutputStream
 import java.io.FileWriter
+import java.io.InputStream
 import java.nio.file.Files
 import java.nio.file.Path
 import java.nio.file.Paths
+import java.nio.file.StandardCopyOption
 
 /**
  * 配置管理器
@@ -47,18 +52,29 @@ class ConfigManager(
     fun loadConfig(): PluginConfig {
         return try {
             if (!configFile.exists()) {
-                logger.info("配置文件不存在，创建默认配置: ${configFile.absolutePath}")
-                createDefaultConfig()
+                logger.info("配置文件不存在，从资源文件复制默认配置: ${configFile.absolutePath}")
+                copyDefaultConfigFromResources()
             }
 
-            val yaml = Yaml()
-            FileInputStream(configFile).use { input ->
-                yaml.loadAs(input, PluginConfig::class.java)
-            }.also {
-                logger.info("配置加载成功")
-                logger.debug("WebSocket URL: ${it.websocket.url}")
-                logger.debug("MCDR命令前缀: ${it.chat.mcdrCommandPrefix}")
-                logger.debug("服务器映射数量: ${it.chat.serverPrefixMapping.size}")
+            // 保存当前线程的上下文类加载器
+            val originalClassLoader = Thread.currentThread().contextClassLoader
+            try {
+                // 设置为插件类加载器，使SnakeYAML能找到插件类
+                Thread.currentThread().contextClassLoader = PluginConfig::class.java.classLoader
+
+                // 创建YAML实例，不添加类型标签
+                val yaml = Yaml()
+                FileInputStream(configFile).use { input ->
+                    yaml.loadAs(input, PluginConfig::class.java)
+                }.also {
+                    logger.info("配置加载成功")
+                    logger.debug("WebSocket URL: ${it.websocket.url}")
+                    logger.debug("MCDR命令前缀: ${it.chat.mcdrCommandPrefix}")
+                    logger.debug("服务器映射数量: ${it.chat.serverPrefixMapping.size}")
+                }
+            } finally {
+                // 恢复原始类加载器
+                Thread.currentThread().contextClassLoader = originalClassLoader
             }
         } catch (e: Exception) {
             logger.error("加载配置文件失败: ${e.message}", e)
@@ -71,8 +87,17 @@ class ConfigManager(
      * 保存配置
      */
     fun saveConfig(config: PluginConfig): Boolean {
+        // 保存当前线程的上下文类加载器
+        val originalClassLoader = Thread.currentThread().contextClassLoader
         return try {
-            val yaml = Yaml()
+            // 设置为插件类加载器
+            Thread.currentThread().contextClassLoader = PluginConfig::class.java.classLoader
+
+            // 创建Representer，不输出类型标签
+            val representer = Representer(DumperOptions())
+            representer.propertyUtils.isSkipMissingProperties = true
+
+            val yaml = Yaml(representer)
             val yamlString = yaml.dump(config)
 
             FileWriter(configFile).use { writer ->
@@ -86,6 +111,9 @@ class ConfigManager(
         } catch (e: Exception) {
             logger.error("保存配置文件失败: ${e.message}", e)
             false
+        } finally {
+            // 恢复原始类加载器
+            Thread.currentThread().contextClassLoader = originalClassLoader
         }
     }
 
@@ -112,9 +140,34 @@ class ConfigManager(
     }
 
     /**
-     * 创建默认配置
+     * 从资源文件复制默认配置
+     */
+    private fun copyDefaultConfigFromResources(): Boolean {
+        return try {
+            val resourceStream = javaClass.classLoader.getResourceAsStream("config.yml")
+                ?: throw IllegalStateException("未找到资源文件 config.yml")
+
+            Files.copy(resourceStream, configFile.toPath(), StandardCopyOption.REPLACE_EXISTING)
+            logger.info("已从资源文件复制默认配置: ${configFile.absolutePath}")
+            true
+        } catch (e: Exception) {
+            logger.error("从资源文件复制配置失败: ${e.message}", e)
+            false
+        }
+    }
+
+    /**
+     * 创建默认配置（兼容旧版本）
      */
     private fun createDefaultConfig(): PluginConfig {
+        // 先尝试从资源文件复制
+        if (copyDefaultConfigFromResources()) {
+            // 加载复制的配置
+            return loadConfig()
+        }
+
+        // 如果复制失败，使用代码生成的默认配置
+        logger.warn("无法从资源文件复制配置，使用代码生成的默认配置")
         val defaultConfig = PluginConfig.default()
         saveConfig(defaultConfig)
         return defaultConfig
@@ -161,4 +214,5 @@ class ConfigManager(
 
         return errors
     }
+
 }

@@ -1,15 +1,24 @@
-# ChatForward 配置文件
-# 自动生成于 2025-12-12
+# ChatForward 默认配置文件
+# 此文件位于插件JAR内，首次运行时会复制到插件数据目录
 
 websocket:
   # WebSocket服务器地址
   url: "ws://localhost:8080/chat"
+
+  # 身份验证Token
+  token: "your_secret_token_here"
 
   # 重连间隔(毫秒)
   reconnectInterval: 5000
 
   # 最大重连尝试次数
   maxReconnectAttempts: 10
+
+  # 心跳检测间隔(毫秒)
+  heartbeatInterval: 30000
+
+  # 心跳超时时间(毫秒)
+  heartbeatTimeout: 60000
 
 chat:
   # 主前缀

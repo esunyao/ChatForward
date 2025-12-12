@@ -1,12 +1,15 @@
 package cn.esuny.chatForward.config
 
+import kotlin.jvm.JvmOverloads
+
 /**
  * ChatForward 插件配置数据类
  */
-data class PluginConfig(
-    val websocket: WebSocketConfig,
-    val chat: ChatConfig,
-    val storage: StorageConfig
+@JvmOverloads
+data class PluginConfig @JvmOverloads constructor(
+    val websocket: WebSocketConfig = WebSocketConfig(),
+    val chat: ChatConfig = ChatConfig(),
+    val storage: StorageConfig = StorageConfig()
 ) {
     /**
      * WebSocket 配置
