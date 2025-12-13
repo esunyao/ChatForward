@@ -35,11 +35,8 @@ jobs:
       with:
         gradle-version: '8.9'
 
-    - name: Initialize Gradle Wrapper
-      run: gradle wrapper
-
-    - name: Build with Gradle Wrapper
-      run: ./gradlew shadowJar
+    - name: Build with Gradle
+      run: gradle shadowJar
 
     - name: Upload build artifacts
       uses: actions/upload-artifact@v4
@@ -78,38 +75,35 @@ jobs:
       with:
         gradle-version: '8.9'
 
-    - name: Initialize Gradle Wrapper
-      run: gradle wrapper
-
     # Generates and submits a dependency graph, enabling Dependabot Alerts for all project dependencies.
     # See: https://github.com/gradle/actions/blob/main/dependency-submission/README.md
     - name: Generate and submit dependency graph
       uses: gradle/actions/dependency-submission@af1da67850ed9a4cedd57bfd976089dd991e2582 # v4.0.0
+      continue-on-error: true  # 如果Dependency graph未启用，继续执行
 
   release:
     needs: build
-    if: github.event_name == 'push' && github.ref == 'refs/heads/master'
+    if: github.event_name == 'push' && github.ref == 'refs/heads/master' && needs.build.result == 'success'
     runs-on: ubuntu-latest
     permissions:
       contents: write
       packages: write
 
     steps:
-    - uses: actions/checkout@v4
-      with:
-        fetch-depth: 0
-
     - name: Download build artifacts
       uses: actions/download-artifact@v4
       with:
         name: ChatForward-Plugin
         path: artifacts
 
+    - name: List downloaded artifacts
+      run: ls -la artifacts/
+
     - name: Create GitHub Release
       uses: softprops/action-gh-release@v1
       with:
-        name: Release ${{ github.sha }}
-        tag_name: ${{ github.sha }}
+        name: Release v${{ github.sha }}
+        tag_name: v${{ github.sha }}
         body: |
           ChatForward Plugin Release
 
