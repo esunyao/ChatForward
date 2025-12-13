@@ -7,11 +7,10 @@ import kotlin.jvm.JvmOverloads
  */
 data class PluginConfig constructor(
     var websocket: WebSocketConfig = WebSocketConfig(),
-    var chat: ChatConfig = ChatConfig(),
-    var storage: StorageConfig = StorageConfig()
+    var chat: ChatConfig = ChatConfig()
 ) {
     // 无参二次构造函数，供 SnakeYAML 或其他需要无参构造的反射工具使用
-    constructor() : this(WebSocketConfig(), ChatConfig(), StorageConfig())
+    constructor() : this(WebSocketConfig(), ChatConfig())
     /**
      * WebSocket 配置
      */
@@ -28,21 +27,7 @@ data class PluginConfig constructor(
      * 聊天相关配置
      */
     data class ChatConfig(
-        var mainPrefix: String = "§8[§a群组§8]§r",
-        var mcdrCommandPrefix: List<String> = listOf("!!", "##"),
-        var serverPrefixMapping: Map<String, String> = mapOf(
-            "lobby" to "§6大厅",
-            "survival" to "§2生存",
-            "creative" to "§b创造",
-            "minigame" to "§e小游戏"
-        )
-    )
-
-    /**
-     * 存储配置
-     */
-    data class StorageConfig(
-        var playerPersonalityFile: String = "player_personality.json"
+        var mcdrCommandPrefix: List<String> = listOf("!!", "##")
     )
 
     companion object {
@@ -52,8 +37,7 @@ data class PluginConfig constructor(
         fun default(): PluginConfig {
             return PluginConfig(
                 websocket = WebSocketConfig(),
-                chat = ChatConfig(),
-                storage = StorageConfig()
+                chat = ChatConfig()
             )
         }
     }

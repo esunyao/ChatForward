@@ -27,7 +27,7 @@ class PlayerLeaveListener(
         )
 
         if (success) {
-            logger.info("已转发玩家离开事件: ${player.username}")
+            logger.debug("已转发玩家离开事件: ${player.username}")
         } else {
             logger.warn("转发玩家离开事件失败: ${player.username}")
         }

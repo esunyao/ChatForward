@@ -32,7 +32,7 @@ class PlayerJoinListener(
             )
 
             if (success) {
-                logger.info("已转发玩家加入事件: ${player.username} 加入了 $serverName")
+                logger.debug("已转发玩家加入事件: ${player.username} 加入了 $serverName")
             } else {
                 logger.warn("转发玩家加入事件失败: ${player.username}")
             }

@@ -37,7 +37,7 @@ class PlayerSwitchServerListener(
                 )
 
                 if (success) {
-                    logger.info("已转发玩家切换服务器事件: ${player.username} 从 $fromServerName 切换到 $toServerName")
+                    logger.debug("已转发玩家切换服务器事件: ${player.username} 从 $fromServerName 切换到 $toServerName")
                 } else {
                     logger.warn("转发玩家切换服务器事件失败: ${player.username}")
                 }

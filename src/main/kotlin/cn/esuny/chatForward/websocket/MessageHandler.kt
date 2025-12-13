@@ -85,13 +85,7 @@ class MessageHandler(
         val server = JsonUtil.getString(json, "server")
 
         if (player.isNotBlank() && message.isNotBlank()) {
-            // 获取服务器前缀
-            val serverPrefix = config.chat.serverPrefixMapping[server] ?: server
-            val formattedMessage = "${config.chat.mainPrefix} §r<$player> §7$message"
-
-            // 广播到所有配置的服务器
-            broadcastToServers(formattedMessage, server)
-            logger.info("转发玩家聊天: $player@$server: $message")
+            logger.debug("转发玩家聊天: $player@$server: $message")
         } else {
             logger.warn("玩家聊天事件缺少必要字段: player=$player, message=$message")
         }
@@ -105,11 +99,7 @@ class MessageHandler(
         val server = JsonUtil.getString(json, "server")
 
         if (player.isNotBlank() && server.isNotBlank()) {
-            val serverPrefix = config.chat.serverPrefixMapping[server] ?: server
-            val message = "${config.chat.mainPrefix} §a玩家 $player §a加入了服务器 §r$serverPrefix"
-
-            broadcastToServers(message, server)
-            logger.info("玩家加入: $player 加入了 $server")
+            logger.debug("玩家加入: $player 加入了 $server")
         }
     }
 
@@ -120,10 +110,7 @@ class MessageHandler(
         val player = JsonUtil.getString(json, "player")
 
         if (player.isNotBlank()) {
-            val message = "${config.chat.mainPrefix} §c玩家 $player §c离开了服务器"
-
-            broadcastToAllServers(message)
-            logger.info("玩家离开: $player")
+            logger.debug("玩家离开: $player")
         }
     }
 
@@ -136,12 +123,7 @@ class MessageHandler(
         val toServer = JsonUtil.getString(json, "toserver")
 
         if (player.isNotBlank() && fromServer.isNotBlank() && toServer.isNotBlank()) {
-            val fromPrefix = config.chat.serverPrefixMapping[fromServer] ?: fromServer
-            val toPrefix = config.chat.serverPrefixMapping[toServer] ?: toServer
-            val message = "${config.chat.mainPrefix} §e玩家 $player §e从 §r$fromPrefix §e切换到 §r$toPrefix"
-
-            broadcastToServers(message, fromServer, toServer)
-            logger.info("玩家切换服务器: $player 从 $fromServer 切换到 $toServer")
+            logger.debug("玩家切换服务器: $player 从 $fromServer 切换到 $toServer")
         }
     }
 
@@ -255,8 +237,9 @@ class MessageHandler(
      * 广播消息到所有配置的服务器
      */
     private fun broadcastToAllServers(message: String) {
-        config.chat.serverPrefixMapping.keys.forEach { serverName ->
-            broadcastToServer(serverName, message)
+        // 获取所有服务器
+        proxyServer.allServers.forEach { server ->
+            broadcastToServer(server.serverInfo.name, message)
         }
     }
 
@@ -274,9 +257,7 @@ class MessageHandler(
      */
     private fun broadcastToSpecificServers(message: String, servers: List<String>) {
         servers.forEach { serverName ->
-            if (config.chat.serverPrefixMapping.containsKey(serverName)) {
-                broadcastToServer(serverName, message)
-            }
+            broadcastToServer(serverName, message)
         }
     }
 
@@ -315,12 +296,11 @@ class MessageHandler(
      */
     private fun getServerStatus(): Map<String, Any> {
         return try {
-            val servers = config.chat.serverPrefixMapping.keys.associateWith { serverName ->
-                val server = proxyServer.getServer(serverName)
-                mapOf(
-                    "online" to server.isPresent,
-                    "player_count" to server.map { it.playersConnected.size }.orElse(0),
-                    "players" to server.map { it.playersConnected.map { player -> player.username } }.orElse(emptyList())
+            val servers = proxyServer.allServers.associate { server ->
+                server.serverInfo.name to mapOf(
+                    "online" to true,
+                    "player_count" to server.playersConnected.size,
+                    "players" to server.playersConnected.map { player -> player.username }
                 )
             }
 

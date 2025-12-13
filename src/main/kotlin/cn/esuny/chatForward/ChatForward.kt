@@ -1,11 +1,13 @@
 package cn.esuny.chatForward
 
+import cn.esuny.chatForward.command.ReloadCommand
 import cn.esuny.chatForward.config.ConfigManager
 import cn.esuny.chatForward.config.PluginConfig
 import cn.esuny.chatForward.listeners.*
 import cn.esuny.chatForward.websocket.MessageHandler
 import cn.esuny.chatForward.websocket.WebSocketService
 import com.google.inject.Inject
+import com.velocitypowered.api.command.CommandManager
 import com.velocitypowered.api.event.Subscribe
 import com.velocitypowered.api.event.proxy.ProxyInitializeEvent
 import com.velocitypowered.api.event.proxy.ProxyShutdownEvent
@@ -55,14 +57,17 @@ class ChatForward @Inject constructor(
             val connected = webSocketService.connect()
             if (connected) {
                 logger.info("ChatForward 插件启动成功")
-                logger.info("WebSocket服务器: ${pluginConfig.websocket.url}")
-                logger.info("监控服务器: ${pluginConfig.chat.serverPrefixMapping.keys}")
+                logger.debug("WebSocket服务器: ${pluginConfig.websocket.url}")
+                logger.debug("监控所有服务器")
             } else {
                 logger.error("WebSocket连接失败，插件功能受限")
             }
 
             // 注册事件监听器
             registerListeners()
+
+            // 注册命令
+            registerCommands()
 
         } catch (e: Exception) {
             logger.error("插件初始化失败", e)
@@ -89,8 +94,11 @@ class ChatForward @Inject constructor(
      */
     private fun registerListeners() {
         try {
+            // 首先取消注册所有已注册的监听器
+            proxyServer.eventManager.unregisterListeners(this)
+
             // 创建监听器实例
-            val playerChatListener = PlayerChatListener(webSocketService)
+            val playerChatListener = PlayerChatListener(webSocketService, pluginConfig)
             val playerJoinListener = PlayerJoinListener(webSocketService)
             val playerLeaveListener = PlayerLeaveListener(webSocketService)
             val playerSwitchServerListener = PlayerSwitchServerListener(webSocketService)
@@ -101,10 +109,29 @@ class ChatForward @Inject constructor(
             proxyServer.eventManager.register(this, playerLeaveListener)
             proxyServer.eventManager.register(this, playerSwitchServerListener)
 
-            logger.info("事件监听器注册完成")
-            logger.info("已注册监听器: 玩家聊天、玩家加入、玩家离开、玩家切换服务器")
+            logger.debug("事件监听器注册完成")
+            logger.debug("已注册监听器: 玩家聊天、玩家加入、玩家离开、玩家切换服务器")
         } catch (e: Exception) {
             logger.error("注册事件监听器失败", e)
+        }
+    }
+
+    /**
+     * 注册命令
+     */
+    private fun registerCommands() {
+        try {
+            // 创建reload命令
+            val reloadCommand = ReloadCommand(this)
+
+            // 获取命令管理器并注册命令
+            val commandManager = proxyServer.commandManager
+            commandManager.register("chatforward", reloadCommand, "cf")
+
+            logger.debug("命令注册完成")
+            logger.debug("已注册命令: /chatforward reload (别名: /cf)")
+        } catch (e: Exception) {
+            logger.error("注册命令失败", e)
         }
     }
 
@@ -137,6 +164,9 @@ class ChatForward @Inject constructor(
             // 重新初始化WebSocket服务
             webSocketService.shutdown()
             webSocketService = WebSocketService(pluginConfig.websocket)
+
+            // 先创建新的消息处理器
+            messageHandler = MessageHandler(proxyServer, pluginConfig, webSocketService)
             webSocketService.setMessageHandler { message -> messageHandler.handleMessage(message) }
 
             val connected = webSocketService.connect()
@@ -144,8 +174,8 @@ class ChatForward @Inject constructor(
                 logger.warn("重新连接WebSocket服务器失败")
             }
 
-            // 更新消息处理器配置
-            messageHandler = MessageHandler(proxyServer, pluginConfig, webSocketService)
+            // 重新注册事件监听器（因为PlayerChatListener使用了配置）
+            registerListeners()
 
             logger.info("配置重新加载成功")
             true

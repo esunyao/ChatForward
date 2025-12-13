@@ -70,7 +70,6 @@ class ConfigManager(
                     logger.info("配置加载成功")
                     logger.debug("WebSocket URL: ${it.websocket.url}")
                     logger.debug("MCDR命令前缀: ${it.chat.mcdrCommandPrefix}")
-                    logger.debug("服务器映射数量: ${it.chat.serverPrefixMapping.size}")
                 }
             } finally {
                 // 恢复原始类加载器
@@ -199,18 +198,7 @@ class ConfigManager(
             errors.add("心跳超时时间不能小于10000ms")
         }
 
-        // 验证聊天配置
-        if (config.chat.mainPrefix.isBlank()) {
-            errors.add("主前缀不能为空")
-        }
-        if (config.chat.serverPrefixMapping.isEmpty()) {
-            errors.add("服务器前缀映射不能为空")
-        }
-
-        // 验证存储配置
-        if (config.storage.playerPersonalityFile.isBlank()) {
-            errors.add("玩家个性设置文件名不能为空")
-        }
+        // 聊天配置验证（暂无需要验证的字段）
 
         return errors
     }

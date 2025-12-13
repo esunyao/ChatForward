@@ -21,21 +21,7 @@ websocket:
   heartbeatTimeout: 60000
 
 chat:
-  # 主前缀
-  mainPrefix: "§8[§a群组§8]§r"
-
   # MCDR命令前缀列表
   mcdrCommandPrefix:
     - "!!"
     - "##"
-
-  # 服务器前缀映射
-  serverPrefixMapping:
-    lobby: "§6大厅"
-    survival: "§2生存"
-    creative: "§b创造"
-    minigame: "§e小游戏"
-
-storage:
-  # 玩家个性设置文件
-  playerPersonalityFile: "player_personality.json"
