@@ -2,6 +2,7 @@ package cn.esuny.chatForward
 
 import cn.esuny.chatForward.config.ConfigManager
 import cn.esuny.chatForward.config.PluginConfig
+import cn.esuny.chatForward.listeners.*
 import cn.esuny.chatForward.websocket.MessageHandler
 import cn.esuny.chatForward.websocket.WebSocketService
 import com.google.inject.Inject
@@ -87,9 +88,24 @@ class ChatForward @Inject constructor(
      * 注册事件监听器
      */
     private fun registerListeners() {
-        // TODO: 注册玩家聊天、加入、离开等事件监听器
-        // 参考 BT-velocity 项目中的监听器实现
-        logger.info("事件监听器注册完成")
+        try {
+            // 创建监听器实例
+            val playerChatListener = PlayerChatListener(webSocketService)
+            val playerJoinListener = PlayerJoinListener(webSocketService)
+            val playerLeaveListener = PlayerLeaveListener(webSocketService)
+            val playerSwitchServerListener = PlayerSwitchServerListener(webSocketService)
+
+            // 注册监听器到事件管理器
+            proxyServer.eventManager.register(this, playerChatListener)
+            proxyServer.eventManager.register(this, playerJoinListener)
+            proxyServer.eventManager.register(this, playerLeaveListener)
+            proxyServer.eventManager.register(this, playerSwitchServerListener)
+
+            logger.info("事件监听器注册完成")
+            logger.info("已注册监听器: 玩家聊天、玩家加入、玩家离开、玩家切换服务器")
+        } catch (e: Exception) {
+            logger.error("注册事件监听器失败", e)
+        }
     }
 
     /**

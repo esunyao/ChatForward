@@ -1,0 +1,906 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ChatForward WebSocket 通信协议测试</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background-color: #f5f5f5;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background-color: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+        }
+
+        header {
+            background-color: #2c3e50;
+            color: white;
+            padding: 20px;
+            text-align: center;
+        }
+
+        h1 {
+            margin-bottom: 10px;
+            font-size: 24px;
+        }
+
+        .subtitle {
+            color: #bdc3c7;
+            font-size: 14px;
+        }
+
+        .main-content {
+            display: flex;
+            flex-wrap: wrap;
+            padding: 20px;
+            gap: 20px;
+        }
+
+        .control-panel {
+            flex: 1;
+            min-width: 300px;
+            background-color: #f8f9fa;
+            border-radius: 6px;
+            padding: 20px;
+            border: 1px solid #e9ecef;
+        }
+
+        .message-display {
+            flex: 2;
+            min-width: 400px;
+            background-color: #f8f9fa;
+            border-radius: 6px;
+            padding: 20px;
+            border: 1px solid #e9ecef;
+        }
+
+        .section-title {
+            font-size: 18px;
+            margin-bottom: 15px;
+            color: #2c3e50;
+            border-bottom: 2px solid #3498db;
+            padding-bottom: 5px;
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 600;
+            color: #495057;
+        }
+
+        input, select, textarea {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ced4da;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+
+        textarea {
+            font-family: monospace;
+            resize: vertical;
+            min-height: 100px;
+        }
+
+        button {
+            background-color: #3498db;
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 600;
+            transition: background-color 0.3s;
+        }
+
+        button:hover {
+            background-color: #2980b9;
+        }
+
+        button.connected {
+            background-color: #27ae60;
+        }
+
+        button.disconnected {
+            background-color: #e74c3c;
+        }
+
+        .button-group {
+            display: flex;
+            gap: 10px;
+            margin-top: 10px;
+        }
+
+        .button-group button {
+            flex: 1;
+        }
+
+        .connection-status {
+            display: flex;
+            align-items: center;
+            margin-bottom: 15px;
+            padding: 10px;
+            border-radius: 4px;
+            font-weight: 600;
+        }
+
+        .status-connected {
+            background-color: #d5edda;
+            color: #155724;
+        }
+
+        .status-disconnected {
+            background-color: #f8d7da;
+            color: #721c24;
+        }
+
+        .status-connecting {
+            background-color: #fff3cd;
+            color: #856404;
+        }
+
+        .status-indicator {
+            display: inline-block;
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            margin-right: 10px;
+        }
+
+        .status-connected .status-indicator {
+            background-color: #27ae60;
+        }
+
+        .status-disconnected .status-indicator {
+            background-color: #e74c3c;
+        }
+
+        .status-connecting .status-indicator {
+            background-color: #f39c12;
+            animation: pulse 1.5s infinite;
+        }
+
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.5; }
+            100% { opacity: 1; }
+        }
+
+        .messages-container {
+            height: 500px;
+            overflow-y: auto;
+            border: 1px solid #ced4da;
+            border-radius: 4px;
+            padding: 10px;
+            background-color: #fff;
+            margin-bottom: 15px;
+        }
+
+        .message {
+            margin-bottom: 10px;
+            padding: 10px;
+            border-radius: 4px;
+            border-left: 4px solid;
+            font-family: monospace;
+            font-size: 12px;
+            word-wrap: break-word;
+        }
+
+        .message.sent {
+            background-color: #e3f2fd;
+            border-left-color: #2196f3;
+        }
+
+        .message.received {
+            background-color: #f1f8e9;
+            border-left-color: #7cb342;
+        }
+
+        .message.error {
+            background-color: #ffebee;
+            border-left-color: #f44336;
+        }
+
+        .message.system {
+            background-color: #f5f5f5;
+            border-left-color: #9e9e9e;
+        }
+
+        .message .timestamp {
+            font-size: 10px;
+            color: #757575;
+            margin-bottom: 5px;
+        }
+
+        .message .content {
+            white-space: pre-wrap;
+        }
+
+        .tabs {
+            display: flex;
+            border-bottom: 1px solid #ced4da;
+            margin-bottom: 15px;
+        }
+
+        .tab {
+            padding: 10px 20px;
+            cursor: pointer;
+            border-bottom: 3px solid transparent;
+            transition: all 0.3s;
+        }
+
+        .tab.active {
+            border-bottom-color: #3498db;
+            background-color: #e3f2fd;
+            font-weight: 600;
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        .event-actions {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+
+        .event-actions button {
+            padding: 8px;
+            font-size: 12px;
+        }
+
+        .json-editor {
+            background-color: #f8f9fa;
+            border: 1px solid #e9ecef;
+            border-radius: 4px;
+            padding: 10px;
+            margin-bottom: 15px;
+        }
+
+        .json-editor .editor-header {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 10px;
+        }
+
+        .json-editor .editor-title {
+            font-weight: 600;
+            color: #495057;
+        }
+
+        .response-info {
+            background-color: #fff3cd;
+            border: 1px solid #ffeaa7;
+            border-radius: 4px;
+            padding: 10px;
+            margin-top: 15px;
+            font-size: 13px;
+        }
+
+        .response-info h4 {
+            margin-bottom: 5px;
+            color: #856404;
+        }
+
+        .clear-button {
+            background-color: #6c757d;
+            margin-top: 10px;
+        }
+
+        .clear-button:hover {
+            background-color: #5a6268;
+        }
+
+        footer {
+            text-align: center;
+            padding: 15px;
+            color: #6c757d;
+            font-size: 12px;
+            border-top: 1px solid #e9ecef;
+        }
+
+        @media (max-width: 768px) {
+            .main-content {
+                flex-direction: column;
+            }
+
+            .control-panel, .message-display {
+                min-width: 100%;
+            }
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+    <header>
+        <h1>ChatForward WebSocket 通信协议测试</h1>
+        <div class="subtitle">用于测试ChatForward插件与WebSocket服务器之间的通信协议</div>
+    </header>
+
+    <div class="main-content">
+        <div class="control-panel">
+            <h2 class="section-title">连接配置</h2>
+
+            <div id="connectionStatus" class="connection-status status-disconnected">
+                <span class="status-indicator"></span>
+                <span class="status-text">未连接</span>
+            </div>
+
+            <div class="form-group">
+                <label for="wsUrl">WebSocket URL:</label>
+                <input type="text" id="wsUrl" value="ws://localhost:8080/chat" placeholder="ws://服务器地址:端口/路径">
+            </div>
+
+            <div class="form-group">
+                <label for="token">Token:</label>
+                <input type="text" id="token" value="your_secret_token_here" placeholder="身份验证Token">
+            </div>
+
+            <div class="button-group">
+                <button id="connectBtn" onclick="connectWebSocket()">连接</button>
+                <button id="disconnectBtn" onclick="disconnectWebSocket()" disabled>断开连接</button>
+            </div>
+
+            <div class="tabs">
+                <div class="tab active" onclick="switchTab('events')">玩家事件</div>
+                <div class="tab" onclick="switchTab('requests')">请求消息</div>
+                <div class="tab" onclick="switchTab('custom')">自定义消息</div>
+            </div>
+
+            <div id="eventsTab" class="tab-content active">
+                <h3 class="section-title">发送玩家事件</h3>
+
+                <div class="event-actions">
+                    <button onclick="sendPlayerChatEvent()">玩家聊天</button>
+                    <button onclick="sendPlayerJoinEvent()">玩家加入</button>
+                    <button onclick="sendPlayerLeftEvent()">玩家离开</button>
+                    <button onclick="sendPlayerHandoffEvent()">切换服务器</button>
+                    <button onclick="sendPlayerListUpdate()">玩家列表更新</button>
+                    <button onclick="sendPing()">心跳(Ping)</button>
+                </div>
+
+                <div class="form-group">
+                    <label for="playerName">玩家名称:</label>
+                    <input type="text" id="playerName" value="TestPlayer">
+                </div>
+
+                <div class="form-group">
+                    <label for="serverName">服务器名称:</label>
+                    <input type="text" id="serverName" value="lobby">
+                </div>
+
+                <div class="form-group">
+                    <label for="messageContent">消息内容:</label>
+                    <input type="text" id="messageContent" value="Hello, this is a test message!">
+                </div>
+
+                <div class="form-group">
+                    <label for="fromServer">来源服务器:</label>
+                    <input type="text" id="fromServer" value="lobby">
+                </div>
+
+                <div class="form-group">
+                    <label for="toServer">目标服务器:</label>
+                    <input type="text" id="toServer" value="survival">
+                </div>
+            </div>
+
+            <div id="requestsTab" class="tab-content">
+                <h3 class="section-title">发送请求消息</h3>
+
+                <div class="event-actions">
+                    <button onclick="sendBroadcastRequest()">广播消息</button>
+                    <button onclick="sendCommandRequest()">执行命令</button>
+                    <button onclick="sendPlayerListRequest()">获取玩家列表</button>
+                    <button onclick="sendServerStatusRequest()">获取服务器状态</button>
+                </div>
+
+                <div class="form-group">
+                    <label for="requestId">请求ID (echo):</label>
+                    <input type="text" id="requestId" value="req_123">
+                </div>
+
+                <div class="form-group">
+                    <label for="broadcastMessage">广播消息:</label>
+                    <textarea id="broadcastMessage">This is a broadcast message!</textarea>
+                </div>
+
+                <div class="form-group">
+                    <label for="broadcastTarget">广播目标:</label>
+                    <select id="broadcastTarget">
+                        <option value="all">全部服务器</option>
+                        <option value="specific_servers">指定服务器</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="serversList">服务器列表 (逗号分隔):</label>
+                    <input type="text" id="serversList" value="lobby,survival">
+                </div>
+
+                <div class="form-group">
+                    <label for="commandText">命令:</label>
+                    <input type="text" id="commandText" value="say Hello from WebSocket!">
+                </div>
+
+                <div class="form-group">
+                    <label for="executor">执行者:</label>
+                    <select id="executor">
+                        <option value="console">控制台</option>
+                        <option value="player">玩家</option>
+                    </select>
+                </div>
+            </div>
+
+            <div id="customTab" class="tab-content">
+                <h3 class="section-title">自定义JSON消息</h3>
+
+                <div class="form-group">
+                    <label for="customJson">JSON消息:</label>
+                    <textarea id="customJson">{
+  "action": "auth",
+  "token": "your_secret_token_here",
+  "timestamp": 1234567890
+}</textarea>
+                </div>
+
+                <button onclick="sendCustomMessage()">发送自定义消息</button>
+            </div>
+
+            <div class="response-info">
+                <h4>服务器响应信息</h4>
+                <div>最后响应动作: <span id="lastAction">无</span></div>
+                <div>最后响应状态: <span id="lastStatus">无</span></div>
+                <div>最后响应时间: <span id="lastResponseTime">无</span></div>
+            </div>
+        </div>
+
+        <div class="message-display">
+            <h2 class="section-title">消息日志</h2>
+
+            <div class="messages-container" id="messagesContainer">
+                <!-- 消息将在这里动态添加 -->
+            </div>
+
+            <button class="clear-button" onclick="clearMessages()">清空消息日志</button>
+        </div>
+    </div>
+
+    <footer>
+        <p>ChatForward WebSocket 通信协议测试工具 | 协议版本: v1.0</p>
+        <p>使用说明: 配置连接参数后点击"连接"按钮，选择要发送的消息类型进行测试</p>
+    </footer>
+</div>
+
+<script>
+    let ws = null;
+    let connectionStatus = 'disconnected'; // disconnected, connecting, connected
+    let messageCounter = 0;
+    let pingInterval = null;
+    let echoCounter = 0;
+
+    // 更新连接状态显示
+    function updateConnectionStatus(status, message = '') {
+        connectionStatus = status;
+        const statusEl = document.getElementById('connectionStatus');
+        const statusText = statusEl.querySelector('.status-text');
+        const connectBtn = document.getElementById('connectBtn');
+        const disconnectBtn = document.getElementById('disconnectBtn');
+
+        statusEl.className = `connection-status status-${status}`;
+
+        switch(status) {
+            case 'connected':
+                statusText.textContent = '已连接' + (message ? `: ${message}` : '');
+                connectBtn.disabled = true;
+                disconnectBtn.disabled = false;
+                connectBtn.textContent = '已连接';
+                connectBtn.classList.add('connected');
+                connectBtn.classList.remove('disconnected');
+                disconnectBtn.classList.remove('connected');
+                disconnectBtn.classList.add('disconnected');
+                startHeartbeat();
+                break;
+            case 'connecting':
+                statusText.textContent = '连接中...' + (message ? `: ${message}` : '');
+                connectBtn.disabled = true;
+                disconnectBtn.disabled = false;
+                break;
+            case 'disconnected':
+                statusText.textContent = '未连接' + (message ? `: ${message}` : '');
+                connectBtn.disabled = false;
+                disconnectBtn.disabled = true;
+                connectBtn.textContent = '连接';
+                connectBtn.classList.remove('connected');
+                connectBtn.classList.add('disconnected');
+                disconnectBtn.classList.remove('disconnected');
+                disconnectBtn.classList.add('connected');
+                stopHeartbeat();
+                break;
+        }
+    }
+
+    // 切换标签页
+    function switchTab(tabName) {
+        // 移除所有标签的active类
+        document.querySelectorAll('.tab').forEach(tab => {
+            tab.classList.remove('active');
+        });
+
+        // 隐藏所有标签内容
+        document.querySelectorAll('.tab-content').forEach(content => {
+            content.classList.remove('active');
+        });
+
+        // 激活选中的标签
+        document.querySelectorAll('.tab').forEach(tab => {
+            if (tab.textContent.includes(getTabDisplayName(tabName))) {
+                tab.classList.add('active');
+            }
+        });
+
+        // 显示选中的标签内容
+        document.getElementById(`${tabName}Tab`).classList.add('active');
+    }
+
+    function getTabDisplayName(tabName) {
+        switch(tabName) {
+            case 'events': return '玩家事件';
+            case 'requests': return '请求消息';
+            case 'custom': return '自定义消息';
+            default: return tabName;
+        }
+    }
+
+    // 连接WebSocket
+    function connectWebSocket() {
+        const wsUrl = document.getElementById('wsUrl').value;
+        const token = document.getElementById('token').value;
+
+        if (!wsUrl) {
+            alert('请输入WebSocket URL');
+            return;
+        }
+
+        updateConnectionStatus('connecting', '正在连接...');
+
+        try {
+            ws = new WebSocket(wsUrl);
+
+            ws.onopen = function(event) {
+                addMessage('系统', `WebSocket连接已建立`, 'system');
+                updateConnectionStatus('connected', '连接成功');
+
+                // 连接成功后立即发送身份验证
+                sendAuthMessage(token);
+            };
+
+            ws.onclose = function(event) {
+                addMessage('系统', `WebSocket连接已关闭 (代码: ${event.code}, 原因: ${event.reason || '无'})`, 'system');
+                updateConnectionStatus('disconnected', '连接已关闭');
+            };
+
+            ws.onerror = function(event) {
+                addMessage('错误', `WebSocket连接错误`, 'error');
+                updateConnectionStatus('disconnected', '连接错误');
+            };
+
+            ws.onmessage = function(event) {
+                try {
+                    const data = JSON.parse(event.data);
+                    addMessage('服务器', JSON.stringify(data, null, 2), 'received');
+
+                    // 更新最后响应信息
+                    updateLastResponseInfo(data);
+
+                    // 处理特定类型的消息
+                    if (data.action === 'pong') {
+                        addMessage('系统', '收到心跳响应 (pong)', 'system');
+                    } else if (data.action === 'auth' && data.status === 'ok') {
+                        addMessage('系统', '身份验证成功', 'system');
+                    } else if (data.status === 'error') {
+                        addMessage('错误', `错误: ${data.error_code} - ${data.error_message}`, 'error');
+                    }
+                } catch (e) {
+                    addMessage('服务器', event.data, 'received');
+                }
+            };
+        } catch (e) {
+            addMessage('错误', `连接失败: ${e.message}`, 'error');
+            updateConnectionStatus('disconnected', '连接失败');
+        }
+    }
+
+    // 断开WebSocket连接
+    function disconnectWebSocket() {
+        if (ws && ws.readyState === WebSocket.OPEN) {
+            ws.close(1000, '用户主动断开连接');
+        }
+        updateConnectionStatus('disconnected', '已断开连接');
+    }
+
+    // 发送身份验证消息
+    function sendAuthMessage(token) {
+        const authMessage = {
+            action: 'auth',
+            token: token,
+            timestamp: Date.now()
+        };
+
+        sendMessage(authMessage, '身份验证请求');
+    }
+
+    // 开始心跳检测
+    function startHeartbeat() {
+        // 清除可能存在的旧定时器
+        if (pingInterval) {
+            clearInterval(pingInterval);
+        }
+
+        // 每30秒发送一次心跳
+        pingInterval = setInterval(() => {
+            if (ws && ws.readyState === WebSocket.OPEN) {
+                const pingMessage = {
+                    action: 'ping',
+                    timestamp: Date.now()
+                };
+
+                sendMessage(pingMessage, '心跳请求 (ping)');
+            }
+        }, 30000);
+    }
+
+    // 停止心跳检测
+    function stopHeartbeat() {
+        if (pingInterval) {
+            clearInterval(pingInterval);
+            pingInterval = null;
+        }
+    }
+
+    // 发送消息到WebSocket服务器
+    function sendMessage(message, description = '') {
+        if (!ws || ws.readyState !== WebSocket.OPEN) {
+            addMessage('错误', 'WebSocket未连接，无法发送消息', 'error');
+            return false;
+        }
+
+        try {
+            const messageJson = JSON.stringify(message);
+            ws.send(messageJson);
+
+            if (description) {
+                addMessage('客户端', `${description}: ${messageJson}`, 'sent');
+            } else {
+                addMessage('客户端', messageJson, 'sent');
+            }
+
+            return true;
+        } catch (e) {
+            addMessage('错误', `发送消息失败: ${e.message}`, 'error');
+            return false;
+        }
+    }
+
+    // 生成唯一的echo ID
+    function generateEcho() {
+        echoCounter++;
+        return `echo_${Date.now()}_${echoCounter}`;
+    }
+
+    // 发送玩家聊天事件
+    function sendPlayerChatEvent() {
+        const event = {
+            Mode: 'PlayerChatEvent',
+            player: document.getElementById('playerName').value,
+            message: document.getElementById('messageContent').value,
+            server: document.getElementById('serverName').value
+        };
+
+        sendMessage(event, '玩家聊天事件');
+    }
+
+    // 发送玩家加入事件
+    function sendPlayerJoinEvent() {
+        const event = {
+            Mode: 'PlayerJoinEvent',
+            player: document.getElementById('playerName').value,
+            server: document.getElementById('serverName').value
+        };
+
+        sendMessage(event, '玩家加入事件');
+    }
+
+    // 发送玩家离开事件
+    function sendPlayerLeftEvent() {
+        const event = {
+            Mode: 'PlayerLeftEvent',
+            player: document.getElementById('playerName').value
+        };
+
+        sendMessage(event, '玩家离开事件');
+    }
+
+    // 发送玩家切换服务器事件
+    function sendPlayerHandoffEvent() {
+        const event = {
+            Mode: 'PlayerHandoffEvent',
+            player: document.getElementById('playerName').value,
+            fromserver: document.getElementById('fromServer').value,
+            toserver: document.getElementById('toServer').value
+        };
+
+        sendMessage(event, '玩家切换服务器事件');
+    }
+
+    // 发送玩家列表更新事件
+    function sendPlayerListUpdate() {
+        const event = {
+            Mode: 'PlayerListUpdate',
+            server: document.getElementById('serverName').value,
+            players: [document.getElementById('playerName').value, 'AnotherPlayer'],
+            timestamp: Date.now()
+        };
+
+        sendMessage(event, '玩家列表更新事件');
+    }
+
+    // 发送心跳
+    function sendPing() {
+        const pingMessage = {
+            action: 'ping',
+            timestamp: Date.now()
+        };
+
+        sendMessage(pingMessage, '心跳请求 (ping)');
+    }
+
+    // 发送广播请求
+    function sendBroadcastRequest() {
+        const target = document.getElementById('broadcastTarget').value;
+        const request = {
+            action: 'broadcast',
+            message: document.getElementById('broadcastMessage').value,
+            target: target,
+            echo: document.getElementById('requestId').value || generateEcho()
+        };
+
+        if (target === 'specific_servers') {
+            const servers = document.getElementById('serversList').value.split(',').map(s => s.trim());
+            request.servers = servers;
+        }
+
+        sendMessage(request, '广播请求');
+    }
+
+    // 发送执行命令请求
+    function sendCommandRequest() {
+        const request = {
+            action: 'command',
+            command: document.getElementById('commandText').value,
+            executor: document.getElementById('executor').value,
+            echo: document.getElementById('requestId').value || generateEcho()
+        };
+
+        sendMessage(request, '执行命令请求');
+    }
+
+    // 发送获取玩家列表请求
+    function sendPlayerListRequest() {
+        const request = {
+            action: 'player_list',
+            server: document.getElementById('serverName').value || 'all',
+            echo: document.getElementById('requestId').value || generateEcho()
+        };
+
+        sendMessage(request, '获取玩家列表请求');
+    }
+
+    // 发送获取服务器状态请求
+    function sendServerStatusRequest() {
+        const request = {
+            action: 'server_status',
+            echo: document.getElementById('requestId').value || generateEcho()
+        };
+
+        sendMessage(request, '获取服务器状态请求');
+    }
+
+    // 发送自定义消息
+    function sendCustomMessage() {
+        try {
+            const customJson = document.getElementById('customJson').value;
+            const message = JSON.parse(customJson);
+            sendMessage(message, '自定义消息');
+        } catch (e) {
+            addMessage('错误', `JSON解析失败: ${e.message}`, 'error');
+        }
+    }
+
+    // 添加消息到显示区域
+    function addMessage(sender, content, type = 'system') {
+        messageCounter++;
+        const messagesContainer = document.getElementById('messagesContainer');
+        const messageEl = document.createElement('div');
+        messageEl.className = `message ${type}`;
+
+        const timestamp = new Date().toLocaleTimeString();
+        messageEl.innerHTML = `
+                <div class="timestamp">${timestamp} - ${sender}</div>
+                <div class="content">${content}</div>
+            `;
+
+        messagesContainer.appendChild(messageEl);
+
+        // 自动滚动到底部
+        messagesContainer.scrollTop = messagesContainer.scrollHeight;
+    }
+
+    // 清空消息日志
+    function clearMessages() {
+        document.getElementById('messagesContainer').innerHTML = '';
+        messageCounter = 0;
+    }
+
+    // 更新最后响应信息
+    function updateLastResponseInfo(data) {
+        document.getElementById('lastAction').textContent = data.action || '未知';
+        document.getElementById('lastStatus').textContent = data.status || '成功';
+        document.getElementById('lastResponseTime').textContent = new Date().toLocaleTimeString();
+    }
+
+    // 页面加载时初始化
+    window.onload = function() {
+        // 设置默认值
+        document.getElementById('playerName').value = 'TestPlayer';
+        document.getElementById('serverName').value = 'lobby';
+        document.getElementById('messageContent').value = 'Hello, this is a test message!';
+        document.getElementById('fromServer').value = 'lobby';
+        document.getElementById('toServer').value = 'survival';
+        document.getElementById('broadcastMessage').value = 'This is a broadcast message!';
+        document.getElementById('serversList').value = 'lobby,survival';
+        document.getElementById('commandText').value = 'say Hello from WebSocket!';
+        document.getElementById('requestId').value = 'req_' + Date.now();
+
+        // 添加初始消息
+        addMessage('系统', 'ChatForward WebSocket通信协议测试工具已就绪', 'system');
+        addMessage('系统', '请配置WebSocket URL和Token，然后点击"连接"按钮开始测试', 'system');
+    };
+
+    // 页面卸载时断开连接
+    window.onbeforeunload = function() {
+        if (ws && ws.readyState === WebSocket.OPEN) {
+            ws.close();
+        }
+    };
+</script>
+</body>
+</html>
