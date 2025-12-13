@@ -42,6 +42,31 @@ tasks {
         // Your plugin's jar (or shadowJar if present) will be used automatically.
         velocityVersion("3.4.0-SNAPSHOT")
     }
+
+    shadowJar {
+        archiveBaseName.set("ChatForward")
+        archiveClassifier.set("")
+        archiveVersion.set("")
+
+        // 重定位依赖包以避免冲突
+        relocate("com.alibaba.fastjson2", "cn.esuny.chatforward.libs.fastjson2")
+        relocate("org.yaml.snakeyaml", "cn.esuny.chatforward.libs.snakeyaml")
+        relocate("org.java_websocket", "cn.esuny.chatforward.libs.java_websocket")
+
+        // 排除不需要的依赖
+        dependencies {
+            exclude(dependency("com.velocitypowered:velocity-api:.*"))
+            exclude(dependency("org.jetbrains.kotlin:kotlin-stdlib:.*"))
+        }
+
+        // 最小化JAR文件
+        minimize()
+    }
+
+    // 使assemble任务依赖于shadowJar
+    assemble {
+        dependsOn(shadowJar)
+    }
 }
 
 val targetJavaVersion = 17
